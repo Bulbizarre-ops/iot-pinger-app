@@ -117,7 +117,6 @@ if device_UUID:
             .filter(col("DEVICE_UUID") == str(device_UUID_formated))
             .select(
                 col("ID"),
-                col("START_DATE"),
                 col("END_DATE"),
                 col("AVG_UPLOAD_SPEED"),
                 col("AVG_DOWNLOAD_SPEED"),
