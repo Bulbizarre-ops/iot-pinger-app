@@ -116,7 +116,6 @@ if device_UUID:
             session.table("IOT.PINGER.SPEED_TESTS_RESULTS")
             .filter(col("DEVICE_UUID") == str(device_UUID_formated))
             .select(
-                col("ID"),
                 col("END_DATE"),
                 col("AVG_UPLOAD_SPEED"),
                 col("AVG_DOWNLOAD_SPEED"),
