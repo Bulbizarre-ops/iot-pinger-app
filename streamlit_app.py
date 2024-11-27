@@ -1,12 +1,3 @@
-# Import python packages
-from snowflake.snowpark.functions import col, max as max_, min as min_, date_add
-import streamlit as st
-import uuid
-import pandas as pd
-import qrcode
-from io import BytesIO
-
-
 #----
 from pandas.api.types import (
     is_categorical_dtype,
@@ -28,7 +19,6 @@ def generate_wifi_qr(ssid, authentication, password, hidden):
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
     return img
-
 
 def filter_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -107,62 +97,73 @@ def filter_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
 #---
 
-# Write directly to the app
-st.title("Here are the results of your last tests from your pinger :balloon:")
-st.write(
-    """You will be able to choose the selected device by entering its UUID
-    """
-)
+# Create tabs for the two views
+st.title("Welcome to the Multi-Feature App :balloon:")
+tab1, tab2 = st.tabs(["Pinger Results", "Wi-Fi QR Code Generator"])
 
-# Get the current credentials
+# Tab for Pinger Results
+with tab1:
+    st.header("Pinger Results")
+    st.write(
+        """You will be able to choose the selected device by entering its UUID
+        """
+    )
 
-device_UUID = st.text_input("Please enter the device UUID")
+    # Get the device UUID
+    device_UUID = st.text_input("Please enter the device UUID")
 
-if device_UUID:
-    try:
-        # Validate and format the UUID
-        device_UUID_formated = uuid.UUID(hex=device_UUID)
-        st.write("You are looking for the test triggered by", device_UUID_formated)
-        
-        # Fetch session
-        cnx = st.connection("snowflake")
-        session = cnx.session()
-        
-        # Query the database
-        speed_results_dataframe = (
-            session.table("IOT.PINGER.SPEED_TESTS_RESULTS")
-            .filter(col("DEVICE_UUID") == str(device_UUID_formated))
-            .select(
-                col("END_DATE"),
-                col("AVG_UPLOAD_SPEED"),
-                col("AVG_DOWNLOAD_SPEED"),
-                col("AVG_PING")
-            ).sort(col("END_DATE").desc())
-            .to_pandas()
-        )
-        filtered_dataframe = filter_dataframe(speed_results_dataframe)
-        st.scatter_chart(data=filtered_dataframe,x='END_DATE',y=['AVG_UPLOAD_SPEED','AVG_DOWNLOAD_SPEED'],color=['#FFFF00','#0000FF'])
-        st.dataframe(filtered_dataframe)
+    if device_UUID:
+        try:
+            # Validate and format the UUID
+            device_UUID_formatted = uuid.UUID(hex=device_UUID)
+            st.write("You are looking for the test triggered by", device_UUID_formatted)
 
-    except ValueError:
-        st.error("The entered UUID is invalid. Please check the format and try again.")
+            # Fetch session
+            cnx = st.connection("snowflake")
+            session = cnx.session()
 
-ssid = st.text_input("SSID (Wi-Fi Network Name)", "")
-authentication = st.selectbox("Authentication Type", ["WPA3-SAE", "WPA2-PSK", "OPEN"])
-password = st.text_input("Password", "", type="password") if authentication != "OPEN" else ""
-hidden = st.checkbox("Hidden SSID", False)
+            # Query the database
+            speed_results_dataframe = (
+                session.table("IOT.PINGER.SPEED_TESTS_RESULTS")
+                .filter(col("DEVICE_UUID") == str(device_UUID_formatted))
+                .select(
+                    col("END_DATE"),
+                    col("AVG_UPLOAD_SPEED"),
+                    col("AVG_DOWNLOAD_SPEED"),
+                    col("AVG_PING")
+                ).sort(col("END_DATE").desc())
+                .to_pandas()
+            )
+            filtered_dataframe = filter_dataframe(speed_results_dataframe)
+            st.line_chart(
+                data=filtered_dataframe,
+                x='END_DATE',
+                y=['AVG_UPLOAD_SPEED', 'AVG_DOWNLOAD_SPEED'],
+            )
+            st.dataframe(filtered_dataframe)
 
-# Generate QR Code button
-if st.button("Generate QR Code"):
-    if not ssid:
-        st.error("SSID is required!")
-    elif authentication != "OPEN" and not password:
-        st.error("Password is required for selected authentication!")
-    else:
-        # Generate and display QR Code
-        img = generate_wifi_qr(ssid, authentication, password, hidden)
-        buffer = BytesIO()
-        img.save(buffer, format="PNG")
-        buffer.seek(0)
-        st.image(buffer, caption="Wi-Fi QR Code", use_column_width=True)
-        st.download_button("Download QR Code", data=buffer, file_name="wifi_qr_code.png", mime="image/png")
+        except ValueError:
+            st.error("The entered UUID is invalid. Please check the format and try again.")
+
+# Tab for Wi-Fi QR Code Generator
+with tab2:
+    st.header("Wi-Fi QR Code Generator")
+    ssid = st.text_input("SSID (Wi-Fi Network Name)", "")
+    authentication = st.selectbox("Authentication Type", ["WPA3-SAE", "WPA2-PSK", "OPEN"])
+    password = st.text_input("Password", "", type="password") if authentication != "OPEN" else ""
+    hidden = st.checkbox("Hidden SSID", False)
+
+    # Generate QR Code button
+    if st.button("Generate QR Code"):
+        if not ssid:
+            st.error("SSID is required!")
+        elif authentication != "OPEN" and not password:
+            st.error("Password is required for selected authentication!")
+        else:
+            # Generate and display QR Code
+            img = generate_wifi_qr(ssid, authentication, password, hidden)
+            buffer = BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0)
+            st.image(buffer, caption="Wi-Fi QR Code", use_column_width=True)
+            st.download_button("Download QR Code", data=buffer, file_name="wifi_qr_code.png", mime="image/png")
