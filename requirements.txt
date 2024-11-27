@@ -4,5 +4,5 @@ streamlit
 requests
 pandas
 uuid
-qrcode
+qrcode==6.1
 io
