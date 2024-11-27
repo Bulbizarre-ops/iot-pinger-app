@@ -3,6 +3,8 @@ from snowflake.snowpark.functions import col, max as max_, min as min_, date_add
 import streamlit as st
 import uuid
 import pandas as pd
+import qrcode
+from io import BytesIO
 
 
 #----
@@ -12,6 +14,21 @@ from pandas.api.types import (
     is_numeric_dtype,
     is_object_dtype,
 )
+
+def generate_wifi_qr(ssid, authentication, password, hidden):
+    # Construct Wi-Fi QR Code string
+    wifi_string = f"WIFI:T:{authentication};S:{ssid};P:{password};H:{'true' if hidden else 'false'};;"
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(wifi_string)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    return img
+
 
 def filter_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -129,3 +146,23 @@ if device_UUID:
 
     except ValueError:
         st.error("The entered UUID is invalid. Please check the format and try again.")
+
+ssid = st.text_input("SSID (Wi-Fi Network Name)", "")
+authentication = st.selectbox("Authentication Type", ["WPA3-SAE", "WPA2-PSK", "OPEN"])
+password = st.text_input("Password", "", type="password") if authentication != "OPEN" else ""
+hidden = st.checkbox("Hidden SSID", False)
+
+# Generate QR Code button
+if st.button("Generate QR Code"):
+    if not ssid:
+        st.error("SSID is required!")
+    elif authentication != "OPEN" and not password:
+        st.error("Password is required for selected authentication!")
+    else:
+        # Generate and display QR Code
+        img = generate_wifi_qr(ssid, authentication, password, hidden)
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        buffer.seek(0)
+        st.image(buffer, caption="Wi-Fi QR Code", use_column_width=True)
+        st.download_button("Download QR Code", data=buffer, file_name="wifi_qr_code.png", mime="image/png")
