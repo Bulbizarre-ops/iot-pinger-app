@@ -157,7 +157,7 @@ with tab1:
 with tab2:
     st.header("Wi-Fi QR Code Generator")
     ssid = st.text_input("SSID (Wi-Fi Network Name)", "")
-    authentication = st.selectbox("Authentication Type", ["WPA3-SAE", "WPA2-PSK", "OPEN"])
+    authentication = "WPA"
     password = st.text_input("Password", "", type="password") if authentication != "OPEN" else ""
     hidden = st.checkbox("Hidden SSID", False)
 
